@@ -60,6 +60,16 @@ def display_page(pathname):
                     display_format='YYYY-MM-DD',
                     style={'marginBottom': '20px', 'border': '1px solid #ccc', 'borderRadius': '4px', 'padding': '5px'}
                 ),
+                dcc.RadioItems(
+                    id='grouping-option',
+                    options=[
+                        {'label': 'Category', 'value': 'Category'},
+                        {'label': 'Account', 'value': 'Account'},
+                        {'label': 'Category + Account', 'value': 'Category_Account'}
+                    ],
+                    value='Category',
+                    labelStyle={'display': 'block', 'marginBottom': '10px'}
+                ),
                 html.Button("Fetch Trend Data", id="fetch-trend-data-button", n_clicks=0, style={'marginTop': '10px'})
             ], style={'width': '20%', 'backgroundColor': '#e9ecef', 'padding': '10px'}),
             html.Div([
@@ -78,10 +88,11 @@ def display_page(pathname):
     Output('page2-content', 'children'),
     Input('fetch-trend-data-button', 'n_clicks'),
     State('page2-date-picker', 'start_date'),
-    State('page2-date-picker', 'end_date')
+    State('page2-date-picker', 'end_date'),
+    State('grouping-option', 'value')
 )
-def fetch_trend_data(n_clicks, start_date, end_date):
-    print("Fetch Trend Data button clicked. n_clicks:", n_clicks, "start_date:", start_date, "end_date:", end_date)
+def fetch_trend_data(n_clicks, start_date, end_date, grouping_option):
+    print("Fetch Trend Data button clicked. n_clicks:", n_clicks, "start_date:", start_date, "end_date:", end_date, "grouping_option:", grouping_option)
     if not n_clicks or n_clicks == 0 or not start_date or not end_date:
         return ""
     
@@ -104,8 +115,17 @@ def fetch_trend_data(n_clicks, start_date, end_date):
     for col in df.select_dtypes(include=['float', 'int']).columns:
         df[col] = df[col].round(2)
     
-    df_grouped = df.groupby(['date', 'Category'], as_index=False).sum()
-    stack_plot = px.area(df_grouped, x='date', y='Asset', color='Category', title='Stacked Asset Trend Over Time')
+    group_by = ['date']
+    if grouping_option == 'Category':
+        group_by.append('Category')
+    elif grouping_option == 'Account':
+        group_by.append('Account')
+    elif grouping_option == 'Category_Account':
+        group_by.extend(['Category', 'Account'])
+    
+    df_grouped = df.groupby(group_by, as_index=False).sum()
+    stack_plot = px.area(df_grouped, x='date', y='Asset', color=group_by[1] if len(group_by) > 1 else None, title='Stacked Asset Trend Over Time')
+    benefit_stack_plot = px.bar(df_grouped, x='date', y='Benefit', color=group_by[1] if len(group_by) > 1 else None, title='Stacked Benefit Trend Over Time', barmode='relative')
     
     return html.Div([
         html.H3(f"Trend Data from {start_date} to {end_date}"),
@@ -119,5 +139,6 @@ def fetch_trend_data(n_clicks, start_date, end_date):
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'left', 'minWidth': '100px', 'width': '150px', 'maxWidth': '300px', 'whiteSpace': 'normal'}
         ),
-        dcc.Graph(figure=stack_plot)
+        dcc.Graph(figure=stack_plot),
+        dcc.Graph(figure=benefit_stack_plot)
     ])
