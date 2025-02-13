@@ -137,3 +137,44 @@ def fetch_data(n_clicks, selected_date):
         dcc.Graph(figure=pie_chart),
         dcc.Graph(figure=bar_chart)
     ])
+
+
+
+@app.callback(
+    Output('page2-content', 'children'),
+    Input('fetch-trend-data-button', 'n_clicks'),
+    State('page2-date-picker', 'start_date'),
+    State('page2-date-picker', 'end_date'),
+    State('grouping-option', 'value')
+)
+def fetch_trend_data(n_clicks, start_date, end_date, grouping_option):
+    print("Fetch Trend Data button clicked. n_clicks:", n_clicks, "start_date:", start_date, "end_date:", end_date, "grouping_option:", grouping_option)
+    if not n_clicks or n_clicks == 0 or not start_date or not end_date:
+        return ""
+    
+    client = MongoClient(config.MONGO_URI)
+    db = client.BalanceStates
+    collection = db.DailyAsset
+    
+    start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    query = {"date": {"$gte": start_date_dt, "$lte": end_date_dt}}
+    data = list(collection.find(query))
+    if not data:
+        return html.Div(f"No data found for the selected date range: {start_date} to {end_date}.")
+    
+    df = pd.DataFrame(data).drop(columns=['_id'], errors='ignore')
+    df['date'] = pd.to_datetime(df['date'])
+    for col in df.select_dtypes(include=['float', 'int']).columns:
+        df[col] = df[col].round(2)
+    
+    df_grouped = df.groupby(['date'] + (grouping_option or []), as_index=False).sum(numeric_only=True)
+    stack_plot = px.area(df_grouped, x='date', y='Asset', color=grouping_option[0] if grouping_option else None, title='Stacked Asset Trend Over Time')
+    benefit_stack_plot = px.bar(df_grouped, x='date', y='Benefit', color=grouping_option[0] if grouping_option else None, title='Stacked Benefit Trend Over Time', barmode='relative')
+    
+    return html.Div([
+        html.H3(f"Trend Data from {start_date} to {end_date}"),
+        dcc.Graph(figure=stack_plot),
+        dcc.Graph(figure=benefit_stack_plot)
+    ])
