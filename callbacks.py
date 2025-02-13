@@ -104,6 +104,9 @@ def fetch_trend_data(n_clicks, start_date, end_date):
     for col in df.select_dtypes(include=['float', 'int']).columns:
         df[col] = df[col].round(2)
     
+    df_grouped = df.groupby(['date', 'Category'], as_index=False).sum()
+    stack_plot = px.area(df_grouped, x='date', y='Asset', color='Category', title='Stacked Asset Trend Over Time')
+    
     return html.Div([
         html.H3(f"Trend Data from {start_date} to {end_date}"),
         dash_table.DataTable(
@@ -115,5 +118,6 @@ def fetch_trend_data(n_clicks, start_date, end_date):
             filter_action='native',
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'left', 'minWidth': '100px', 'width': '150px', 'maxWidth': '300px', 'whiteSpace': 'normal'}
-        )
+        ),
+        dcc.Graph(figure=stack_plot)
     ])
