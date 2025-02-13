@@ -22,6 +22,13 @@ collection = db.DailyAsset
 early_date_entry = collection.find_one(sort=[("date", 1)])
 early_date = early_date_entry["date"].strftime('%Y-%m-%d') if early_date_entry else None
 
+# Fetch column names dynamically from the database
+data_sample = collection.find_one()
+if data_sample:
+    available_columns = [col for col in data_sample.keys() if col not in ['_id', 'date', 'Asset', 'Benefit']]
+else:
+    available_columns = []
+
 @app.callback(
     Output('page-content', 'children'),
     Input('url', 'pathname')
@@ -60,15 +67,11 @@ def display_page(pathname):
                     display_format='YYYY-MM-DD',
                     style={'marginBottom': '20px', 'border': '1px solid #ccc', 'borderRadius': '4px', 'padding': '5px'}
                 ),
-                dcc.RadioItems(
+                dcc.Dropdown(
                     id='grouping-option',
-                    options=[
-                        {'label': 'Category', 'value': 'Category'},
-                        {'label': 'Account', 'value': 'Account'},
-                        {'label': 'Category + Account', 'value': 'Category_Account'}
-                    ],
-                    value='Category',
-                    labelStyle={'display': 'block', 'marginBottom': '10px'}
+                    options=[{'label': col, 'value': col} for col in available_columns],
+                    multi=True,
+                    placeholder='Select grouping columns'
                 ),
                 html.Button("Fetch Trend Data", id="fetch-trend-data-button", n_clicks=0, style={'marginTop': '10px'})
             ], style={'width': '20%', 'backgroundColor': '#e9ecef', 'padding': '10px'}),
@@ -85,52 +88,44 @@ def display_page(pathname):
     ]))
 
 @app.callback(
-    Output('page2-content', 'children'),
-    Input('fetch-trend-data-button', 'n_clicks'),
-    State('page2-date-picker', 'start_date'),
-    State('page2-date-picker', 'end_date'),
-    State('grouping-option', 'value')
+    Output('page1-chart', 'children'),
+    Input('fetch-data-button', 'n_clicks'),
+    State('page1-date-picker', 'date')
 )
-def fetch_trend_data(n_clicks, start_date, end_date, grouping_option):
-    print("Fetch Trend Data button clicked. n_clicks:", n_clicks, "start_date:", start_date, "end_date:", end_date, "grouping_option:", grouping_option)
-    if not n_clicks or n_clicks == 0 or not start_date or not end_date:
+def fetch_data(n_clicks, selected_date):
+    print("Fetch Data button clicked. n_clicks:", n_clicks, "selected_date:", selected_date)
+    if not n_clicks or n_clicks == 0 or not selected_date:
         return ""
-    
+
     client = MongoClient(config.MONGO_URI)
     db = client.BalanceStates
     collection = db.DailyAsset
-    
-    try:
-        start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
-        end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
-    except ValueError:
-        return html.Div("Invalid date format.")
-    
-    query = {"date": {"$gte": start_date_dt, "$lte": end_date_dt}}
+
+    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d')
+
+    query = {"date": selected_date_dt}
     data = list(collection.find(query))
+
     if not data:
-        return html.Div(f"No data found for the selected date range: {start_date} to {end_date}.")
-    
+        return html.Div(f"No data found for {selected_date}.")
+
     df = pd.DataFrame(data).drop(columns=['_id'], errors='ignore')
+
+    df['Category'] = df['Category'].astype(str)  # Ensure Category is string
+    df['date'] = pd.to_datetime(df['date'])  # Convert date to datetime
+
     for col in df.select_dtypes(include=['float', 'int']).columns:
         df[col] = df[col].round(2)
-    
-    group_by = ['date']
-    if grouping_option == 'Category':
-        group_by.append('Category')
-    elif grouping_option == 'Account':
-        group_by.append('Account')
-    elif grouping_option == 'Category_Account':
-        group_by.extend(['Category', 'Account'])
-    
-    df_grouped = df.groupby(group_by, as_index=False).sum()
-    stack_plot = px.area(df_grouped, x='date', y='Asset', color=group_by[1] if len(group_by) > 1 else None, title='Stacked Asset Trend Over Time')
-    benefit_stack_plot = px.bar(df_grouped, x='date', y='Benefit', color=group_by[1] if len(group_by) > 1 else None, title='Stacked Benefit Trend Over Time', barmode='relative')
-    
+
+    # Exclude datetime columns from sum operation
+    df_grouped = df.groupby(['Category'], as_index=False).sum(numeric_only=True)
+
+    pie_chart = px.pie(df_grouped, names='Category', values='Asset', title='Asset Distribution by Category')
+    bar_chart = px.bar(df_grouped, x='Category', y='Benefit', title='Benefit by Category', text_auto=True)
+
     return html.Div([
-        html.H3(f"Trend Data from {start_date} to {end_date}"),
         dash_table.DataTable(
-            id='trend-data-table',
+            id='data-table',
             columns=[{"name": col, "id": col} for col in df.columns],
             data=df.to_dict("records"),
             page_size=10,
@@ -139,6 +134,6 @@ def fetch_trend_data(n_clicks, start_date, end_date, grouping_option):
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'left', 'minWidth': '100px', 'width': '150px', 'maxWidth': '300px', 'whiteSpace': 'normal'}
         ),
-        dcc.Graph(figure=stack_plot),
-        dcc.Graph(figure=benefit_stack_plot)
+        dcc.Graph(figure=pie_chart),
+        dcc.Graph(figure=bar_chart)
     ])
