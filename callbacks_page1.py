@@ -12,7 +12,7 @@ print("callbacks_page1.py is imported")
 
 page1_layout = html.Div([
     html.Div([
-        html.H4("Page 1 Sidebar"),
+        html.H4("Daily Report"),
         dcc.DatePickerSingle(
             id='page1-date-picker', date=None,
             display_format='YYYY-MM-DD',

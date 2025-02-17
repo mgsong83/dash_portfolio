@@ -11,19 +11,23 @@ from dash_app import app
 import config  # Importing MongoDB credentials from config.py
 import callbacks_page1  # Importing Page 1 Callbacks
 import callbacks_page2  # Importing Page 2 Callbacks
-import callbacks_page3  # Importing Page 3 Callbacks
-import config
+import callbacks_admin
+
 
 print("callbacks.py is imported")
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     html.Div([
-        dcc.Link('Home', href='/', style={'marginRight': '15px'}),
-        dcc.Link('Page 1', href='/page-1', style={'marginRight': '15px'}),
-        dcc.Link('Page 2', href='/page-2', style={'marginRight': '15px'}),
-        dcc.Link('Page 3 (Admin)', href='/page-3', style={'marginRight': '15px'})
-    ], style={'marginBottom': '20px', 'padding': '10px', 'backgroundColor': '#f0f0f0'}),
+        html.Div([
+            dcc.Link('Home', href='/', style={'marginRight': '15px'}),
+            dcc.Link('Daily Report', href='/page-1', style={'marginRight': '15px'}),
+            dcc.Link('Trend Report', href='/page-2', style={'marginRight': '15px'})
+        ], style={'display': 'inline-block'}),
+        html.Div([
+            dcc.Link('Admin Page', href='/page-admin', style={'marginLeft': 'auto', 'fontWeight': 'bold'})
+        ], style={'display': 'inline-block', 'float': 'right'})
+    ], style={'marginBottom': '20px', 'padding': '10px', 'backgroundColor': '#f0f0f0', 'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center'}),
     
     dbc.Modal(
         [
@@ -46,7 +50,7 @@ app.layout = html.Div([
     State('password-modal', 'is_open')
 )
 def show_password_modal(pathname, is_open):
-    return pathname == '/page-3' or is_open
+    return pathname == '/page-admin' or is_open
 
 @app.callback(
     Output('page-content', 'children'),
@@ -65,7 +69,7 @@ def display_page(pathname, password, n_clicks):
         ], style={'padding': '10px'}),
         '/page-1': callbacks_page1.page1_layout,
         '/page-2': callbacks_page2.page2_layout,
-        '/page-3': callbacks_page3.page3_layout if password == config.ADMIN_PW and n_clicks > 0 else html.Div("Access Denied. Please enter the correct password.", style={'color': 'red', 'fontSize': '20px'})
+        '/page-admin': callbacks_admin.page_admin_layout if password == config.ADMIN_PW and n_clicks > 0 else html.Div("Access Denied. Please enter the correct password.", style={'color': 'red', 'fontSize': '20px'})
     }
     
     return pages.get(pathname, html.Div([
