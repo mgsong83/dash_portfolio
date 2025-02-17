@@ -37,7 +37,9 @@ app.layout = html.Div([
 )
 def display_page(pathname):
     print("Current pathname in callback:", pathname)
-    container_style = {'display': 'flex', 'minHeight': '80vh'}
+    
+    if pathname == '/page-admin':
+        return callbacks_admin.page_admin_layout
     
     pages = {
         '/': html.Div([
@@ -45,21 +47,7 @@ def display_page(pathname):
             html.P("This is MG's financial portfolio sharing page (under construction).")
         ], style={'padding': '10px'}),
         '/page-1': callbacks_page1.page1_layout,
-        '/page-2': callbacks_page2.page2_layout,
-        '/page-admin': html.Div([
-            dbc.Modal(
-                [
-                    dbc.ModalHeader("Enter Password"),
-                    dbc.ModalBody([
-                        dcc.Input(id='password-input', type='password', placeholder='Enter Password', style={'marginBottom': '10px', 'width': '100%'}),
-                        html.Button('Submit', id='password-submit', n_clicks=0, style={'marginTop': '10px'})
-                    ]),
-                ],
-                id='password-modal',
-                is_open=True,
-            ),
-            html.Div(id='admin-content')
-        ])
+        '/page-2': callbacks_page2.page2_layout
     }
     
     return pages.get(pathname, html.Div([
