@@ -1,5 +1,5 @@
 # callbacks_admin.py
-from dash import html, dcc, dash_table
+from dash import html, dcc, dash_table, callback_context
 from dash.dependencies import Input, Output, State
 from dash_app import app
 from pymongo import MongoClient
@@ -10,7 +10,7 @@ print("callbacks_admin.py is imported")
 
 client = MongoClient(config.MONGO_URI)
 db = client.BalanceStates
-collection = db.DailyAsset
+collection = db.Current_Status_UTF8
 
 # Admin Page Layout
 page_admin_layout = html.Div([
@@ -34,15 +34,12 @@ def load_data(n_clicks):
     if n_clicks == 0:
         return ""
     
-    data = list(collection.find({}, {"_id": 0}))  # MongoDB에서 데이터 가져오기
+    data = list(collection.find({}, {"_id": 0}))  # Fetch data from BalanceStates.Current_Status_UTF8
     df = pd.DataFrame(data)
     
     return dash_table.DataTable(
         id='editable-table',
-        columns=[{'name': 'date', 'id': 'date', 'editable': False},  # 날짜 수정 불가
-                 {'name': 'Category', 'id': 'Category', 'editable': True},
-                 {'name': 'Asset', 'id': 'Asset', 'editable': True},
-                 {'name': 'Benefit', 'id': 'Benefit', 'editable': True}],
+        columns=[{"name": col, "id": col, "editable": True} for col in df.columns],
         data=df.to_dict("records"),
         editable=True,
         row_deletable=True,
@@ -54,16 +51,38 @@ def load_data(n_clicks):
 # Update MongoDB when table is edited
 @app.callback(
     Output('update-status', 'children'),
-    Input('save-button', 'n_clicks'),
-    State('editable-table', 'data')
+    Input('save-data-button', 'n_clicks'),
+    State('editable-table', 'data'),
+    State('editable-table', 'data_previous')
 )
-def update_database(n_clicks, updated_data):
-    if n_clicks == 0:
+def update_database(n_clicks, updated_data, previous_data):
+    if n_clicks == 0 or not previous_data:
         return ""
     
-    for row in updated_data:
-        query = {"date": row["date"], "Category": row["Category"]}
-        update = {"$set": row}
-        collection.update_one(query, update, upsert=True)  # 변경 사항 저장
+    for new_row, old_row in zip(updated_data, previous_data):
+        if new_row != old_row:  # 변경된 데이터만 업데이트
+            query = {"date": new_row["date"], "Category": new_row["Category"]}
+            update = {"$set": new_row}
+            collection.update_one(query, update, upsert=True)  # 변경 사항 저장
     
     return "Database Updated Successfully!"
+
+# Handle Password Modal Display & Close
+@app.callback(
+    Output('password-modal', 'is_open'),
+    Input('password-submit', 'n_clicks'),
+    Input('url', 'pathname'),
+    State('password-input', 'value'),
+    State('password-modal', 'is_open')
+)
+def handle_password_modal(n_clicks, pathname, password, is_open):
+    ctx = callback_context
+    if not ctx.triggered:
+        return is_open
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if trigger_id == 'url' and pathname == '/page-admin':
+        return True  # Admin 페이지 이동 시 모달 표시
+    elif trigger_id == 'password-submit' and password == config.ADMIN_PASSWORD:
+        return False  # 로그인 성공 시 모달 닫기
+    return is_open

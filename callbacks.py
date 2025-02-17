@@ -11,8 +11,7 @@ from dash_app import app
 import config  # Importing MongoDB credentials from config.py
 import callbacks_page1  # Importing Page 1 Callbacks
 import callbacks_page2  # Importing Page 2 Callbacks
-import callbacks_admin
-
+import callbacks_admin  # Importing Admin Callbacks
 
 print("callbacks.py is imported")
 
@@ -21,44 +20,22 @@ app.layout = html.Div([
     html.Div([
         html.Div([
             dcc.Link('Home', href='/', style={'marginRight': '15px'}),
-            dcc.Link('Daily Report', href='/page-1', style={'marginRight': '15px'}),
-            dcc.Link('Trend Report', href='/page-2', style={'marginRight': '15px'})
+            dcc.Link('Page 1', href='/page-1', style={'marginRight': '15px'}),
+            dcc.Link('Page 2', href='/page-2', style={'marginRight': '15px'})
         ], style={'display': 'inline-block'}),
         html.Div([
-            dcc.Link('Admin Page', href='/page-admin', style={'marginLeft': 'auto', 'fontWeight': 'bold'})
+            dcc.Link('Admin', href='/page-admin', style={'marginLeft': 'auto', 'fontWeight': 'bold'})
         ], style={'display': 'inline-block', 'float': 'right'})
     ], style={'marginBottom': '20px', 'padding': '10px', 'backgroundColor': '#f0f0f0', 'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center'}),
-    
-    dbc.Modal(
-        [
-            dbc.ModalHeader("Enter Password"),
-            dbc.ModalBody([
-                dcc.Input(id='password-input', type='password', placeholder='Enter Password', style={'marginBottom': '10px', 'width': '100%'}),
-                html.Button('Submit', id='password-submit', n_clicks=0, style={'marginTop': '10px'})
-            ]),
-        ],
-        id='password-modal',
-        is_open=False,
-    ),
     
     html.Div(id='page-content')
 ])
 
 @app.callback(
-    Output('password-modal', 'is_open'),
-    Input('url', 'pathname'),
-    State('password-modal', 'is_open')
-)
-def show_password_modal(pathname, is_open):
-    return pathname == '/page-admin' or is_open
-
-@app.callback(
     Output('page-content', 'children'),
-    Input('url', 'pathname'),
-    State('password-input', 'value'),
-    Input('password-submit', 'n_clicks')
+    Input('url', 'pathname')
 )
-def display_page(pathname, password, n_clicks):
+def display_page(pathname):
     print("Current pathname in callback:", pathname)
     container_style = {'display': 'flex', 'minHeight': '80vh'}
     
@@ -69,7 +46,20 @@ def display_page(pathname, password, n_clicks):
         ], style={'padding': '10px'}),
         '/page-1': callbacks_page1.page1_layout,
         '/page-2': callbacks_page2.page2_layout,
-        '/page-admin': callbacks_admin.page_admin_layout if password == config.ADMIN_PW and n_clicks > 0 else html.Div("Access Denied. Please enter the correct password.", style={'color': 'red', 'fontSize': '20px'})
+        '/page-admin': html.Div([
+            dbc.Modal(
+                [
+                    dbc.ModalHeader("Enter Password"),
+                    dbc.ModalBody([
+                        dcc.Input(id='password-input', type='password', placeholder='Enter Password', style={'marginBottom': '10px', 'width': '100%'}),
+                        html.Button('Submit', id='password-submit', n_clicks=0, style={'marginTop': '10px'})
+                    ]),
+                ],
+                id='password-modal',
+                is_open=True,
+            ),
+            html.Div(id='admin-content')
+        ])
     }
     
     return pages.get(pathname, html.Div([
