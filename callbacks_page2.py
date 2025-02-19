@@ -25,7 +25,7 @@ else:
 
 page2_layout = html.Div([
     html.Div([
-        html.H4("Page 2 Sidebar"),
+        html.H4("Trend Report"),
         dcc.DatePickerRange(
             id='page2-date-picker',
             start_date=early_date,

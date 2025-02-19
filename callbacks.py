@@ -20,8 +20,8 @@ app.layout = html.Div([
     html.Div([
         html.Div([
             dcc.Link('Home', href='/', style={'marginRight': '15px'}),
-            dcc.Link('Page 1', href='/page-1', style={'marginRight': '15px'}),
-            dcc.Link('Page 2', href='/page-2', style={'marginRight': '15px'})
+            dcc.Link('Daily', href='/page-1', style={'marginRight': '15px'}),
+            dcc.Link('Trend', href='/page-2', style={'marginRight': '15px'})
         ], style={'display': 'inline-block'}),
         html.Div([
             dcc.Link('Admin', href='/page-admin', style={'marginLeft': 'auto', 'fontWeight': 'bold'})

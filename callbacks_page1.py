@@ -19,7 +19,7 @@ page1_layout = html.Div([
             style={'marginBottom': '20px', 'border': '1px solid #ccc', 'borderRadius': '4px', 'padding': '5px'}
         ),
         html.Button("Fetch Data", id="fetch-data-button", n_clicks=0, style={'marginTop': '10px'})
-    ], style={'width': '20%', 'backgroundColor': '#e9ecef', 'padding': '10px', 'float': 'left'}),
+    ], style={'width': '20%', 'backgroundColor': '#e9ecef', 'padding': '10px', 'float': 'left', 'display' : 'flex', 'flexDirection' : 'column'}),
     html.Div([
         html.H3("일간 현황"),
         html.Div(id='page1-chart')
