@@ -48,12 +48,19 @@ def fetch_data(n_clicks, selected_date):
     
     df = pd.DataFrame(data).drop(columns=['_id'], errors='ignore')
     df['date'] = pd.to_datetime(df['date'])
+    df = df.drop(['date'], axis=1)
     for col in df.select_dtypes(include=['float', 'int']).columns:
         df[col] = df[col].round(2)
     
     df_grouped = df.groupby(['Category'], as_index=False).sum(numeric_only=True)
-    pie_chart = px.pie(df_grouped, names='Category', values='Asset', title='Asset Distribution by Category')
-    bar_chart = px.bar(df_grouped, x='Category', y='Benefit', title='Benefit by Category', text_auto=True)
+    pie_chart = px.pie(df_grouped, names='Category', values='Asset', title='평가 자산 by Category')
+    bar_chart = px.bar(df_grouped, x='Category', y='Benefit', title='손익 by Category', text_auto=True)
+
+    top5 = df.nlargest(5, 'Asset')
+    top5_benefit = df.nlargest(5, 'Benefit')
+
+    Top5_chart = px.bar(top5, x='Name', y='Asset', title = "자산평가 Top5 종목")
+    Top5_benefit_chart = px.bar(top5_benefit, x='Name', y='Benefit', title = '손익 Top5 종목')
     
     return html.Div([
         dash_table.DataTable(
@@ -67,5 +74,7 @@ def fetch_data(n_clicks, selected_date):
             style_cell={'textAlign': 'left', 'minWidth': '100px', 'width': '150px', 'maxWidth': '300px', 'whiteSpace': 'normal'}
         ),
         dcc.Graph(figure=pie_chart),
-        dcc.Graph(figure=bar_chart)
+        dcc.Graph(figure=bar_chart),
+        dcc.Graph(figure=Top5_chart),
+        dcc.Graph(figure=Top5_benefit_chart),
     ])
